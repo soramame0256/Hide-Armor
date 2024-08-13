@@ -5,28 +5,28 @@ import java.util.ArrayList;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import com.terraformersmc.modmenu.gui.widget.LegacyTexturedButtonWidget;
 import furgl.hideArmor.config.Config;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TexturedButtonWidget;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
-public class ToggleableButtonWidget extends TexturedButtonWidget {
+public class ToggleableButtonWidget extends LegacyTexturedButtonWidget {
 
 	public static ArrayList<ToggleableButtonWidget> hideYourArmorButtons;
 	public static ArrayList<ToggleableButtonWidget> hideOtherPlayersArmorButtons;
 
 	private boolean toggled;
-	private Identifier texture;
-	private int u;
-	private int v;
-	private int toggledVOffset;
+	private final Identifier texture;
+	private final int u;
+	private final int v;
+	private final int toggledVOffset;
 	private final int textureWidth;
 	private final int textureHeight;
-	private Tooltip toggledTooltip;
-	private Tooltip untoggledTooltip;
+	private final Tooltip toggledTooltip;
+	private final Tooltip untoggledTooltip;
 
 	public ToggleableButtonWidget(int x, int y, int width, int height, int u, int v, int toggledVOffset, Identifier texture, int textureWidth, int textureHeight, ButtonWidget.PressAction pressAction, Tooltip toggledTooltip, Tooltip untoggledTooltip, Text text) {
 		super(x, y, width, height, u, v, toggledVOffset, texture, textureWidth, textureHeight, pressAction, text);
@@ -51,7 +51,7 @@ public class ToggleableButtonWidget extends TexturedButtonWidget {
 	}
 
 	@Override
-	public void renderButton(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+	public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 		RenderSystem.setShaderTexture(0, this.texture);
 		int i = this.v;
 		if (this.isToggled()) 
@@ -59,9 +59,9 @@ public class ToggleableButtonWidget extends TexturedButtonWidget {
 
 		RenderSystem.enableDepthTest();
 		// background
-		drawTexture(matrices, this.getX()-1, this.getY()-1, 108f, this.isHovered() ? 20 : 0, this.width+2, this.height+2, this.textureWidth, this.textureHeight);
+		context.drawTexture(this.texture, this.getX()-1, this.getY()-1, 108f, this.isHovered() ? 20 : 0, this.width+2, this.height+2, this.textureWidth, this.textureHeight);
 		// icon
-		drawTexture(matrices, this.getX(), this.getY(), (float)this.u, (float)i, this.width, this.height, this.textureWidth, this.textureHeight);
+		context.drawTexture(this.texture, this.getX(), this.getY(), (float)this.u, (float)i, this.width, this.height, this.textureWidth, this.textureHeight);
 	}
 
 	public static void toggleExpandedGui() {

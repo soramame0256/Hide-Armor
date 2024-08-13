@@ -1,5 +1,7 @@
 package furgl.hideArmor.mixin;
 
+import com.terraformersmc.modmenu.gui.widget.LegacyTexturedButtonWidget;
+import net.minecraft.client.gui.DrawContext;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -22,7 +24,6 @@ import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.TexturedButtonWidget;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.text.Text;
@@ -36,9 +37,9 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 	RecipeBookWidget recipeBook;
 
 	@Unique
-	Identifier BUTTONS = new Identifier(HideArmor.MODID, "textures/gui/buttons.png");
+	Identifier BUTTONS = Identifier.of(HideArmor.MODID, "textures/gui/buttons.png");
 	@Unique
-	Identifier BACKGROUND = new Identifier(HideArmor.MODID, "textures/gui/background.png");
+	Identifier BACKGROUND = Identifier.of(HideArmor.MODID, "textures/gui/background.png");
 	@Unique
 	TexturedButtonWidget button;
 	@Unique
@@ -70,7 +71,7 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 					Text.empty());
 			ToggleableButtonWidget.hideYourArmorButtons.add(toggle);
 			toggle.visible = Config.expandedGui;
-			if (Config.hideYourArmor.get(slot).booleanValue())
+			if (Config.hideYourArmor.get(slot))
 				toggle.toggle();
 			this.addDrawableChild(toggle);
 			// hide other player's armor
@@ -88,14 +89,12 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 					Text.empty());
 			ToggleableButtonWidget.hideOtherPlayersArmorButtons.add(toggle);
 			toggle.visible = Config.expandedGui;
-			if (Config.hideOtherPlayerArmor.get(slot).booleanValue())
+			if (Config.hideOtherPlayerArmor.get(slot))
 				toggle.toggle();
 			this.addDrawableChild(toggle);
 		}
 		// button to expand
-		this.button = new TexturedButtonWidget(0, 0, 18, 18, 90, 0, 18, BUTTONS, 128, 128, (button) -> {
-			ToggleableButtonWidget.toggleExpandedGui();
-		});
+		this.button = new LegacyTexturedButtonWidget(0, 0, 18, 18, 90, 0, 18, BUTTONS, 128, 128, (button) -> ToggleableButtonWidget.toggleExpandedGui(),Text.empty());
 		this.button.visible = Config.showGuiButton;
 		this.addDrawableChild(this.button);
 		// reset button positions
@@ -103,15 +102,15 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 	}
 	
 	@Inject(method = "drawForeground", at = @At("HEAD"))
-	private void onDrawForeground(MatrixStack matrices, int mouseX, int mouseY, CallbackInfo ci) {
+	private void onDrawForeground(DrawContext context, int mouseX, int mouseY, CallbackInfo ci) {
 		if (Config.expandedGui) {
 			// draw text
-			drawCenteredTextWithShadow(matrices, textRenderer, Text.translatable("hidearmor.name").formatted(Formatting.WHITE), this.backgroundWidth+40-hideArmorBackgroundWidth, 12, 16777215);
+			context.drawCenteredTextWithShadow(textRenderer, Text.translatable("hidearmor.name").formatted(Formatting.WHITE), this.backgroundWidth+40-hideArmorBackgroundWidth, 12, 16777215);
 		}
 	}
 
 	@Inject(method = "drawBackground", at = @At("TAIL"))
-	private void onDrawBackground(MatrixStack matrices, float delta, int mouseX, int mouseY, CallbackInfo ci) {
+	private void onDrawBackground(DrawContext context, float delta, int mouseX, int mouseY, CallbackInfo ci) {
 		// add background width (to move potion statuses over) 
 		// after inventory is rendered (otherwise it renders too much)
 		// and before status is rendered (which is after drawBackground)
@@ -121,12 +120,12 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 			// draw background
 			RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 			RenderSystem.setShaderTexture(0, this.BACKGROUND);
-			drawTexture(matrices, x+this.backgroundWidth+1-hideArmorBackgroundWidth, this.y, 0, 0, hideArmorBackgroundWidth, 160);
+			context.drawTexture(this.BACKGROUND, x+this.backgroundWidth+1-hideArmorBackgroundWidth, this.y, 0, 0, hideArmorBackgroundWidth, 160);
 		}
 	}
 	
 	@Inject(method = "render", at = @At("TAIL"))
-	public void render(MatrixStack matrices, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+	public void render(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
 		// remove background width (to move potion statuses over)
 		// after background, foreground, and potion statuses are rendered
 		// (have to remove otherwise default inventory will use backgroundWidth and draw too far)
@@ -134,11 +133,12 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 	}
 
 	@Inject(method = "mouseClicked", at = @At("RETURN"))
-	private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable ci) {
+	private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
 		resetButtonPositions();
 	}
 	
 	// Update background width so potion effects are pushed to the right of the Hide Armor gui
+	@Unique
 	private void AddBackgroundWidth() {
 		if (Config.expandedGui) {
 			this.backgroundWidth += hideArmorBackgroundWidth;
@@ -146,12 +146,14 @@ public abstract class RenderGuiMixin extends AbstractInventoryScreen<PlayerScree
 	}
 	
 	// Update background width so potion effects are pushed to the right of the Hide Armor gui
+	@Unique
 	private void RemoveBackgroundWidth() {
 		if (Config.expandedGui) {
 			this.backgroundWidth -= hideArmorBackgroundWidth;
 		}
 	}
 
+	@Unique
 	private void resetButtonPositions() {
 		this.button.setPosition(this.x + 143 + Config.guiButtonXOffset, this.height / 2 - 22 + Config.guiButtonYOffset);
 		for (int i=0; i<ToggleableButtonWidget.hideYourArmorButtons.size(); ++i) {
